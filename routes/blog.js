@@ -20,7 +20,7 @@ router.get("/userblogs", fetchuser, async (req, res) => {
   }
 });
 
-router.get("/single/:blogid", fetchuser, async (req, res) => {
+router.get("/single/:blogid", async (req, res) => {
   try {
     const { blogid } = req.params;
     const blogs = await Blog.findById(blogid).populate("user");
