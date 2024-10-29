@@ -3,6 +3,11 @@ const Blog = require("../models/Blog");
 const fetchuser = require("../middleware/fetchuser");
 const router = express.Router();
 
+const { GoogleGenerativeAI } = require("@google/generative-ai");
+
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+
 router.get("/userblogs", fetchuser, async (req, res) => {
   try {
     const blogs = await Blog.find({ user: req.user._id })
@@ -76,6 +81,30 @@ router.post("/create", fetchuser, async (req, res) => {
     }
     const blog = await Blog.create(blogdata);
     return res.status(200).send({ blog });
+  } catch (error) {
+    console.log(error.message);
+    res.status(500).json({ message: "Internal Server Error!" });
+  }
+});
+
+router.post("/generate-blog", fetchuser, async (req, res) => {
+  try {
+    const { title } = req.body;
+    if (!title) {
+      return res.status(500).send({ message: "Title is required" });
+    }
+    console.log(process.env.GEMINI_API_KEY);
+
+    async function generate(title) {
+      const prompt = `give me the script for a blog post for the topic: ${title}`;
+
+      const result = await model.generateContent(prompt);
+      console.log(result.response.text());
+      console.log(result.response.usageMetadata);
+      return result.response.text();
+    }
+    generatedText = await generate(title);
+    return res.status(200).send(generatedText);
   } catch (error) {
     console.log(error.message);
     res.status(500).json({ message: "Internal Server Error!" });
