@@ -1,14 +1,11 @@
-const express = require("express");
 const Blog = require("../models/Blog");
-const fetchuser = require("../middleware/fetchuser");
-const router = express.Router();
-
 const { GoogleGenerativeAI } = require("@google/generative-ai");
-
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+const { default: mongoose } = require("mongoose");
+const { ObjectId } = require("mongodb");
 
-router.get("/userblogs", fetchuser, async (req, res) => {
+const getUserBlogs = async (req, res) => {
   try {
     const blogs = await Blog.find({ user: req.user._id })
       .populate("user")
@@ -23,22 +20,30 @@ router.get("/userblogs", fetchuser, async (req, res) => {
     console.log(error.message);
     res.status(500).json({ message: "Internal Server Error!" });
   }
-});
+};
 
-router.get("/single/:blogid", async (req, res) => {
+const getSingleBlog = async (req, res) => {
   try {
     const { blogid } = req.params;
+    let isBlogLiked = false;
+    if (req.user) {
+      const likedBlogs = req.user.likedBlogs;
+      if (likedBlogs.includes(blogid)) {
+        isBlogLiked = true;
+      }
+    }
     const blogs = await Blog.findById(blogid).populate("user");
     if (!blogs) {
       return res.status(404).send({ message: "Blog not Found" });
     }
-    return res.status(200).send({ blogs });
+    return res.status(200).send({ blogs, isBlogLiked });
   } catch (error) {
     console.log(error.message);
     res.status(500).json({ message: "Internal Server Error!" });
   }
-});
-router.get("/all", async (req, res) => {
+};
+
+const getAllBlogs = async (req, res) => {
   try {
     const blogs = await Blog.find({ visibility: "public" })
       .populate("user")
@@ -53,9 +58,39 @@ router.get("/all", async (req, res) => {
     console.log(error.message);
     res.status(500).json({ message: "Internal Server Error!" });
   }
-});
+};
 
-router.post("/create", fetchuser, async (req, res) => {
+const likeBlog = async (req, res) => {
+  try {
+    const { blogId } = req.params;
+    const blog = await Blog.findById(blogId);
+    if (!blog) {
+      return res.status(404).send({ message: "Blog not Found" });
+    }
+    const blogObjectId = new mongoose.Types.ObjectId(blogId);
+
+    let message = "";
+    if (req.user.likedBlogs.some((id) => id.equals(blogObjectId))) {
+      req.user.likedBlogs = req.user.likedBlogs.filter(
+        (id) => !id.equals(blogObjectId)
+      );
+      blog.likeCount -= 1;
+      message = "Disliked the Blog";
+    } else {
+      req.user.likedBlogs.push(blogId);
+      blog.likeCount += 1;
+      message = "Liked the Blog";
+    }
+    const updatedBlog = await blog.save();
+    const updatedUser = await req.user.save();
+    return res.status(200).send({ message, updatedBlog, updatedUser });
+  } catch (error) {
+    console.log(error.message);
+    res.status(500).json({ message: "Internal Server Error!" });
+  }
+};
+
+const createBlog = async (req, res) => {
   try {
     const { title, tag, text, image, visibility } = req.body;
     if (!title) {
@@ -85,15 +120,14 @@ router.post("/create", fetchuser, async (req, res) => {
     console.log(error.message);
     res.status(500).json({ message: "Internal Server Error!" });
   }
-});
+};
 
-router.post("/generate-blog", fetchuser, async (req, res) => {
+const generateBlog = async (req, res) => {
   try {
     const { title } = req.body;
     if (!title) {
       return res.status(500).send({ message: "Title is required" });
     }
-    console.log(process.env.GEMINI_API_KEY);
 
     async function generate(title) {
       const prompt = `give me the script for a blog post for the topic: ${title}`;
@@ -109,9 +143,9 @@ router.post("/generate-blog", fetchuser, async (req, res) => {
     console.log(error.message);
     res.status(500).json({ message: "Internal Server Error!" });
   }
-});
+};
 
-router.put("/update/:blogid", fetchuser, async (req, res) => {
+const updateBlog = async (req, res) => {
   try {
     const { title, tag, text, image, visibility } = req.body;
     const { blogid } = req.params;
@@ -125,6 +159,12 @@ router.put("/update/:blogid", fetchuser, async (req, res) => {
       return res.status(500).send({ message: "Text is required" });
     }
     const blog = await Blog.findById(blogid);
+    if (!blog) {
+      return res.status(404).send({ message: "Blog not Found" });
+    }
+    if (!new ObjectId(req.user._id).equals(new ObjectId(blog.user))) {
+      return res.status(401).send({ message: "Unauthorized" });
+    }
     let update = {
       title: title || blog.title,
       text: text || blog.text,
@@ -145,17 +185,33 @@ router.put("/update/:blogid", fetchuser, async (req, res) => {
     console.log(error.message);
     res.status(500).json({ message: "Internal Server Error!" });
   }
-});
+};
 
-router.delete("/delete/:blogid", fetchuser, async (req, res) => {
+const deleteBlog = async (req, res) => {
   try {
     const { blogid } = req.params;
-    const blog = await Blog.findByIdAndDelete(blogid);
-    return res.status(200).send({ blog });
+    const blog = await Blog.findById(blogid);
+    if (!blog) {
+      return res.status(404).send({ message: "Blog not Found" });
+    }
+    if (!new ObjectId(req.user._id).equals(new ObjectId(blog.user))) {
+      return res.status(401).send({ message: "Unauthorized" });
+    }
+    const deletedBlog = await Blog.findByIdAndDelete(blogid);
+
+    return res.status(200).send({ blog: deletedBlog });
   } catch (error) {
     console.log(error.message);
     res.status(500).send("Internal Server Error!");
   }
-});
-
-module.exports = router;
+};
+module.exports = {
+  getUserBlogs,
+  getSingleBlog,
+  getAllBlogs,
+  likeBlog,
+  createBlog,
+  generateBlog,
+  updateBlog,
+  deleteBlog,
+};

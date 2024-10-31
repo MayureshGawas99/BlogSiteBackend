@@ -14,6 +14,7 @@ const BlogSchema = new Schema(
         "https://cdni.iconscout.com/illustration/free/thumb/free-software-engineer-2043023-1731282.png",
     },
     visibility: { type: String, default: "public" },
+    likeCount: { type: Number, default: 0 },
   },
   { timestamps: true }
 );

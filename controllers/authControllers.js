@@ -1,27 +1,22 @@
-const express = require("express");
-const router = express.Router();
 const User = require("../models/User");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
-const fetchuser = require("../middleware/fetchuser");
-
-router.post("/register", async (req, res) => {
-  const { name, email, password } = req.body;
-  // checking for errors
-  if (!name) {
-    return res.status(500).send({ message: "Name is required" });
-  }
-  if (!email) {
-    return res.status(500).send({ message: "Email is required" });
-  }
-  if (!password || password.length < 8) {
-    return res
-      .status(500)
-      .send({ message: "Password is required and 8 characters long" });
-  }
-
+const registerUser = async (req, res) => {
   // finding if duplicate emails are there or not
   try {
+    const { name, email, password } = req.body;
+    // checking for errors
+    if (!name) {
+      return res.status(500).send({ message: "Name is required" });
+    }
+    if (!email) {
+      return res.status(500).send({ message: "Email is required" });
+    }
+    if (!password || password.length < 8) {
+      return res
+        .status(500)
+        .send({ message: "Password is required and 8 characters long" });
+    }
     let user = await User.findOne({ email: req.body.email });
     if (user) {
       return res.status(400).json({
@@ -42,9 +37,9 @@ router.post("/register", async (req, res) => {
     console.log(error.message);
     res.status(500).json({ message: "Internal Server Error!" });
   }
-});
+};
 
-router.post("/login", async (req, res) => {
+const loginUser = async (req, res) => {
   try {
     const { email, password } = req.body;
     // checking for validation errors
@@ -78,23 +73,21 @@ router.post("/login", async (req, res) => {
     console.log(error.message);
     res.status(500).json({ message: "Internal Server Error!" });
   }
-});
+};
 
-router.get("/getuser", fetchuser, async (req, res) => {
+const getUser = async (req, res) => {
   try {
-    const userid = req.user._id;
-    let user = await User.findById(userid);
-    if (!user) {
+    if (!req.user) {
       return res.status(404).send({ message: "User not Found" });
     }
-    return res.status(200).send(user);
+    return res.status(200).send(req.user);
   } catch (error) {
     console.log(error.message);
     res.status(500).send({ message: "Internal Server Error!" });
   }
-});
+};
 
-router.put("/update", fetchuser, async (req, res) => {
+const updateUser = async (req, res) => {
   try {
     const { name, password, pic } = req.body;
     console.log("Update", name, password, pic);
@@ -127,6 +120,11 @@ router.put("/update", fetchuser, async (req, res) => {
       message: "Error in Updating Profile",
     });
   }
-});
+};
 
-module.exports = router;
+module.exports = {
+  registerUser,
+  loginUser,
+  getUser,
+  updateUser,
+};
