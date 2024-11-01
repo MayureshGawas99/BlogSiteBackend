@@ -24,8 +24,9 @@ const fetchuser = async (req, res, next) => {
 const haveUser = async (req, res, next) => {
   try {
     const token = req.header("auth-token");
+    console.log(token);
     if (!token) {
-      next();
+      return next();
     }
     const data = jwt.verify(token, JWT_SECRET);
     const user = await User.findById(data.user._id);
