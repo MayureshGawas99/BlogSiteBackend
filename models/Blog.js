@@ -15,6 +15,8 @@ const BlogSchema = new Schema(
     },
     visibility: { type: String, default: "public" },
     likeCount: { type: Number, default: 0 },
+    commentCount: { type: Number, default: 0 },
+    totalCommentCount: { type: Number, default: 0 },
   },
   { timestamps: true }
 );

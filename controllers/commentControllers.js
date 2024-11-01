@@ -22,13 +22,12 @@ const createComment = async (req, res) => {
     if (!blog) {
       return res.status(404).json({ error: "Blog not found" });
     }
-    console.log(blog);
-
     if (!parent) {
       const comment = new Comment({ content, author, blogId: blog._id });
       const createdComment = await comment.save();
       user.comments.push(createdComment._id);
       const newUser = await user.save();
+      blog.commentCount += 1;
       console.log(newUser);
     } else {
       if (!isValidMongoId(parent)) {
@@ -50,6 +49,9 @@ const createComment = async (req, res) => {
       const newUser = await user.save();
       console.log(newUser);
     }
+
+    blog.totalCommentCount += 1;
+    await blog.save();
 
     res.status(201).send("Comment Created Successfully");
   } catch (error) {
@@ -173,6 +175,9 @@ const likeComment = async (req, res) => {
 const getBlogComments = async (req, res) => {
   try {
     const { blogId } = req.params;
+    const page = parseInt(req.query.page) || 1; // Get page from query or default to 1
+    const limit = 5; // Set the limit of comments per page
+
     if (!blogId) {
       return res.status(400).send("blogId is required");
     }
@@ -180,13 +185,17 @@ const getBlogComments = async (req, res) => {
       return res.status(400).send("Please provide a valid Paper Id");
     }
 
+    // Fetch top-level comments with pagination
     const topComments = await Comment.find({
       blogId: blogId,
       parent: null,
     })
       .populate("author")
       .populate("replies")
-      .sort({ createdAt: -1 });
+      .sort({ createdAt: -1 })
+      .limit(limit * page); // Limit the number of comments per page
+
+    // Add isLiked property if user is logged in
     if (req.user) {
       const updatedComments = topComments.map((comment) => {
         if (req.user.likedComments.includes(comment._id)) {
@@ -199,7 +208,6 @@ const getBlogComments = async (req, res) => {
       return res.status(200).send(updatedComments);
     }
 
-    // const allComments = await populateComments(topComments, req.user);
     return res.status(200).send(topComments);
   } catch (error) {
     console.error(error);

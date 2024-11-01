@@ -35,9 +35,9 @@ router.delete("/delete/:blogid", fetchuser, deleteBlog);
 // router.get("/add-attribute", async (req, res) => {
 //   try {
 //     async function addAttributeToDocuments() {
-//       const updateResult = await User.updateMany(
+//       const updateResult = await Blog.updateMany(
 //         {}, // Empty filter to select all documents
-//         { $set: { likedComments: [] } } // Replace "defaultValue" with your desired value
+//         { $set: { commentCount: 0 } } // Replace "defaultValue" with your desired value
 //       );
 
 //       console.log(`${updateResult.modifiedCount} documents were updated`);
