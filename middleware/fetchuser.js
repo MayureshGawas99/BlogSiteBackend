@@ -24,7 +24,6 @@ const fetchuser = async (req, res, next) => {
 const haveUser = async (req, res, next) => {
   try {
     const token = req.header("auth-token");
-    console.log(token);
     if (!token) {
       return next();
     }

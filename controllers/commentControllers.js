@@ -170,7 +170,7 @@ const likeComment = async (req, res) => {
   }
 };
 
-const getAllComments = async (req, res) => {
+const getBlogComments = async (req, res) => {
   try {
     const { blogId } = req.params;
     if (!blogId) {
@@ -183,52 +183,104 @@ const getAllComments = async (req, res) => {
     const topComments = await Comment.find({
       blogId: blogId,
       parent: null,
-    });
-    const allComments = await populateComments(topComments, req.user);
-    return res.status(200).send(allComments);
+    })
+      .populate("author")
+      .populate("replies")
+      .sort({ createdAt: -1 });
+    if (req.user) {
+      const updatedComments = topComments.map((comment) => {
+        if (req.user.likedComments.includes(comment._id)) {
+          return { ...comment._doc, isLiked: true };
+        } else {
+          return { ...comment._doc, isLiked: false };
+        }
+      });
+
+      return res.status(200).send(updatedComments);
+    }
+
+    // const allComments = await populateComments(topComments, req.user);
+    return res.status(200).send(topComments);
   } catch (error) {
     console.error(error);
     res.status(500).send("Internal Server Error");
   }
 };
 
-const populateReplies = async (commentId, user) => {
-  let populatedComment = await Comment.findById(commentId)
-    .populate("replies")
-    .populate("author");
-  if (user) {
-    console.log(user, commentId);
-    const isLiked = user.likedComments.some(
-      (p) => p._id.toString() === commentId.toString()
-    );
-    populatedComment = { ...populatedComment._doc, isLiked };
+// const populateReplies = async (commentId, user) => {
+//   let populatedComment = await Comment.findById(commentId)
+//     .populate("replies")
+//     .populate("author");
+//   if (user) {
+//     console.log(user, commentId);
+//     const isLiked = user.likedComments.some(
+//       (p) => p._id.toString() === commentId.toString()
+//     );
+//     populatedComment = { ...populatedComment._doc, isLiked };
+//   }
+
+//   if (populatedComment.replies.length === 0) {
+//     return populatedComment;
+//   }
+
+//   populatedComment.replies = await Promise.all(
+//     populatedComment.replies.map(async (reply) => {
+//       return await populateReplies(reply._id, user);
+//     })
+//   );
+
+//   return populatedComment;
+// };
+
+// const populateComments = async (comments, user) => {
+//   return Promise.all(
+//     comments.map(async (comment) => {
+//       return await populateReplies(comment._id, user);
+//     })
+//   );
+// };
+
+const getCommentReplies = async (req, res) => {
+  try {
+    const { commentId } = req.params;
+    if (!commentId) {
+      return res.status(400).send("commentId is required");
+    }
+    if (!isValidMongoId(commentId)) {
+      return res.status(400).send("Please provide a valid Comment Id");
+    }
+    const comment = await Comment.findById(commentId);
+    if (!comment) {
+      return res.status(404).send("Comment not found");
+    }
+    const replies = await Comment.find({ parent: commentId })
+      .populate("replies")
+      .populate("author")
+      .sort({ createdAt: -1 });
+    if (req.user) {
+      const updatedReplies = replies.map((comment) => {
+        if (req.user.likedComments.includes(comment._id)) {
+          return { ...comment._doc, isLiked: true };
+        } else {
+          return { ...comment._doc, isLiked: false };
+        }
+      });
+
+      return res.status(200).send(updatedReplies);
+    }
+
+    return res.status(200).send(replies);
+  } catch (error) {
+    console.error(error);
+    res.status(500).send("Internal Server Error");
   }
-
-  if (populatedComment.replies.length === 0) {
-    return populatedComment;
-  }
-
-  populatedComment.replies = await Promise.all(
-    populatedComment.replies.map(async (reply) => {
-      return await populateReplies(reply._id, user);
-    })
-  );
-
-  return populatedComment;
-};
-
-const populateComments = async (comments, user) => {
-  return Promise.all(
-    comments.map(async (comment) => {
-      return await populateReplies(comment._id, user);
-    })
-  );
 };
 
 module.exports = {
   createComment,
   deleteComment,
   editComment,
-  getAllComments,
+  getBlogComments,
   likeComment,
+  getCommentReplies,
 };
