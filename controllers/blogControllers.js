@@ -5,17 +5,91 @@ const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 const { default: mongoose } = require("mongoose");
 const { ObjectId } = require("mongodb");
 
+// const getUserBlogs = async (req, res) => {
+//   try {
+//     const blogs = await Blog.find({ user: req.user._id })
+//       .populate("user")
+//       .sort({
+//         createdAt: -1,
+//       });
+//     const publicBlogs = await Blog.find({
+//       user: req.user._id,
+//       visibility: "public",
+//     }).count();
+//     const privateBlogs = await Blog.find({
+//       user: req.user._id,
+//       visibility: "private",
+//     }).count();
+
+//     if (!blogs) {
+//       return res.status(404).send({ message: "No Blogs to Display" });
+//     }
+//     return res.status(200).send({ privateBlogs, publicBlogs, blogs });
+//   } catch (error) {
+//     console.log(error.message);
+//     res.status(500).json({ message: "Internal Server Error!" });
+//   }
+// };
+
 const getUserBlogs = async (req, res) => {
   try {
-    const blogs = await Blog.find({ user: req.user._id })
+    // Get filter, sort, and pagination options from query parameters
+    const { visibility, sort, page = 1, pageSize = 5 } = req.query;
+
+    // Build the query filter based on visibility if specified
+    const filter = { user: req.user._id };
+    if (visibility === "public") {
+      filter.visibility = "public";
+    } else if (visibility === "private") {
+      filter.visibility = "private";
+    }
+
+    // Determine the sorting criteria
+    let sortOption = {};
+    if (sort === "mostLiked") {
+      sortOption = { likeCount: -1 }; // Sort by likeCount in descending order
+    } else {
+      sortOption = { createdAt: -1 }; // Default to sorting by recently added
+    }
+
+    // Calculate the number of documents to skip for pagination
+    const skip = (page - 1) * pageSize;
+
+    // Query the blogs with the applied filters, sorting, and pagination
+    const blogs = await Blog.find(filter)
       .populate("user")
-      .sort({
-        createdAt: -1,
-      });
-    if (!blogs) {
+      .sort(sortOption)
+      .skip(skip)
+      .limit(parseInt(pageSize));
+
+    // Count total blogs matching the filter for pagination info
+    const totalBlogs = await Blog.countDocuments(filter);
+
+    // Count public and private blogs for the user
+    const publicBlogsCount = await Blog.find({
+      user: req.user._id,
+      visibility: "public",
+    }).countDocuments();
+
+    const privateBlogsCount = await Blog.find({
+      user: req.user._id,
+      visibility: "private",
+    }).countDocuments();
+
+    // Check if there are blogs to display
+    if (!blogs || blogs.length === 0) {
       return res.status(404).send({ message: "No Blogs to Display" });
     }
-    return res.status(200).send({ blogs });
+
+    // Return the filtered, sorted blogs along with pagination info and counts
+    return res.status(200).send({
+      privateBlogsCount,
+      publicBlogsCount,
+      totalBlogs,
+      currentPage: parseInt(page),
+      totalPages: Math.ceil(totalBlogs / pageSize),
+      blogs,
+    });
   } catch (error) {
     console.log(error.message);
     res.status(500).json({ message: "Internal Server Error!" });
@@ -35,6 +109,11 @@ const getSingleBlog = async (req, res) => {
     const blogs = await Blog.findById(blogid).populate("user");
     if (!blogs) {
       return res.status(404).send({ message: "Blog not Found" });
+    }
+    if (blogs.visibility === "private") {
+      if (!new ObjectId(req.user._id).equals(new ObjectId(blogs.user._id))) {
+        return res.status(401).send({ message: "Unauthorized" });
+      }
     }
     return res.status(200).send({ blogs, isBlogLiked });
   } catch (error) {
