@@ -6,12 +6,12 @@ const fetchuser = async (req, res, next) => {
   try {
     const token = req.header("auth-token");
     if (!token) {
-      res.status(401).send({ message: "Invalid token" });
+      return res.status(401).send({ message: "Invalid token" });
     }
     const data = jwt.verify(token, JWT_SECRET);
     const user = await User.findById(data.user._id).populate("likedBlogs");
     if (!user) {
-      res.status(401).send({ message: "Invalid token" });
+      return res.status(401).send({ message: "Invalid token" });
     }
     req.user = user;
     next();
