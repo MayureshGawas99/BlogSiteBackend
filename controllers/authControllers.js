@@ -122,9 +122,38 @@ const updateUser = async (req, res) => {
   }
 };
 
+const searchUser = async (req, res) => {
+  try {
+    // Get the search term from the query parameters
+    const { searchTerm } = req.query;
+
+    // If no search term is provided, return an empty array
+    if (!searchTerm) {
+      return res.status(400).json([]);
+    }
+
+    // Search users based on the name or email using a case-insensitive regular expression
+    const results = await User.find({
+      $or: [
+        { name: { $regex: searchTerm, $options: "i" } },
+        { email: { $regex: searchTerm, $options: "i" } },
+      ],
+    })
+      .populate("likedBlogs")
+      .populate("comments")
+      .populate("likedComments");
+
+    // Return the search results
+    res.status(200).json(results);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+};
 module.exports = {
   registerUser,
   loginUser,
   getUser,
   updateUser,
+  searchUser,
 };

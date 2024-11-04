@@ -13,10 +13,13 @@ const {
   generateBlog,
   updateBlog,
   deleteBlog,
+  searchBlog,
 } = require("../controllers/blogControllers");
 const User = require("../models/User");
 
 router.get("/userblogs", fetchuser, getUserBlogs);
+
+router.get("/search", searchBlog);
 
 router.get("/single/:blogid", haveUser, getSingleBlog);
 
