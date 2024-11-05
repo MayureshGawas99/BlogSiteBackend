@@ -7,7 +7,7 @@ const { ObjectId } = require("mongodb");
 
 const getUserBlogs = async (req, res) => {
   try {
-    const { visibility, sort, page = 1, pageSize = 5 } = req.query;
+    const { visibility, sort, page = 1, pageSize = 4 } = req.query;
 
     const filter = { user: req.user._id };
     if (visibility === "public") {
@@ -61,6 +61,28 @@ const getUserBlogs = async (req, res) => {
   }
 };
 
+const getUserLikedBlogs = async (req, res) => {
+  try {
+    const { page = 1, pageSize = 4 } = req.query;
+    const skip = (page - 1) * pageSize;
+    const likedBlogs = await Blog.find({
+      _id: { $in: req.user.likedBlogs },
+      visibility: "public",
+    })
+      .populate("user")
+      .skip(skip)
+      .limit(parseInt(pageSize));
+    return res.status(200).send({
+      likedBlogs,
+      currentPage: parseInt(page),
+      totalPages: Math.ceil(req.user.likedBlogs.length / pageSize),
+    });
+  } catch (error) {
+    console.log(error.message);
+    res.status(500).json({ message: "Internal Server Error!" });
+  }
+};
+
 const getSingleBlog = async (req, res) => {
   try {
     const { blogid } = req.params;
@@ -91,7 +113,7 @@ const getAllBlogs = async (req, res) => {
   try {
     const sortBy = req.query.sortBy || "recentlyAdded";
     const page = parseInt(req.query.page) || 1; // Default to page 1
-    const limit = parseInt(req.query.limit) || 6; // Default to 10 blogs per page
+    const limit = parseInt(req.query.limit) || 4; // Default to 10 blogs per page
     const skip = (page - 1) * limit;
 
     let sortOption = {};
@@ -311,4 +333,5 @@ module.exports = {
   updateBlog,
   deleteBlog,
   searchBlog,
+  getUserLikedBlogs,
 };

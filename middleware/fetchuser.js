@@ -9,7 +9,7 @@ const fetchuser = async (req, res, next) => {
       return res.status(401).send({ message: "Invalid token" });
     }
     const data = jwt.verify(token, JWT_SECRET);
-    const user = await User.findById(data.user._id).populate("likedBlogs");
+    const user = await User.findById(data.user._id);
     if (!user) {
       return res.status(401).send({ message: "Invalid token" });
     }

@@ -14,10 +14,12 @@ const {
   updateBlog,
   deleteBlog,
   searchBlog,
+  getUserLikedBlogs,
 } = require("../controllers/blogControllers");
 const User = require("../models/User");
 
 router.get("/userblogs", fetchuser, getUserBlogs);
+router.get("/userlikedblogs", fetchuser, getUserLikedBlogs);
 
 router.get("/search", searchBlog);
 
