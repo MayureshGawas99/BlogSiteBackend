@@ -2,7 +2,7 @@ const express = require("express");
 const router = express.Router();
 const User = require("../models/User");
 
-const { fetchuser } = require("../middleware/fetchuser");
+const { fetchuser, haveUser } = require("../middleware/fetchuser");
 const {
   registerUser,
   loginUser,
@@ -15,7 +15,7 @@ router.post("/register", registerUser);
 
 router.post("/login", loginUser);
 
-router.get("/getuser", fetchuser, getUser);
+router.get("/getuser/:userId", haveUser, getUser);
 
 router.put("/update", fetchuser, updateUser);
 

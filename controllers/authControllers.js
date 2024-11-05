@@ -77,6 +77,15 @@ const loginUser = async (req, res) => {
 
 const getUser = async (req, res) => {
   try {
+    const { userId } = req.params;
+    if (userId !== "user") {
+      const user = await User.findById(userId);
+      if (!user) {
+        return res.status(404).send({ message: "User not Found" });
+      }
+      return res.status(200).send(user);
+    }
+
     if (!req.user) {
       return res.status(404).send({ message: "User not Found" });
     }

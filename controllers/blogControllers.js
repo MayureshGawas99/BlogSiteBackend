@@ -61,6 +61,58 @@ const getUserBlogs = async (req, res) => {
   }
 };
 
+const getOtherUserBlogs = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { sort, page = 1, pageSize = 4 } = req.query;
+
+    const filter = { user: userId, visibility: "public" };
+
+    let sortOption = {};
+    if (sort === "mostLiked") {
+      sortOption = { likeCount: -1 }; // Sort by likeCount in descending order
+    } else {
+      sortOption = { createdAt: -1 }; // Default to sorting by recently added
+    }
+
+    const skip = (page - 1) * pageSize;
+
+    const blogs = await Blog.find(filter)
+      .sort(sortOption)
+      .skip(skip)
+      .limit(parseInt(pageSize));
+
+    const totalBlogs = await Blog.countDocuments(filter);
+
+    const publicBlogsCount = await Blog.find({
+      user: userId,
+      visibility: "public",
+    }).countDocuments();
+
+    const privateBlogsCount = await Blog.find({
+      user: userId,
+      visibility: "private",
+    }).countDocuments();
+
+    // Check if there are blogs to display
+    if (!blogs || blogs.length === 0) {
+      return res.status(404).send({ message: "No Blogs to Display" });
+    }
+
+    return res.status(200).send({
+      privateBlogsCount,
+      publicBlogsCount,
+      totalBlogs,
+      currentPage: parseInt(page),
+      totalPages: Math.ceil(totalBlogs / pageSize),
+      blogs,
+    });
+  } catch (error) {
+    console.log(error.message);
+    res.status(500).json({ message: "Internal Server Error!" });
+  }
+};
+
 const getUserLikedBlogs = async (req, res) => {
   try {
     const { page = 1, pageSize = 4 } = req.query;
@@ -325,6 +377,7 @@ const searchBlog = async (req, res) => {
 
 module.exports = {
   getUserBlogs,
+  getOtherUserBlogs,
   getSingleBlog,
   getAllBlogs,
   likeBlog,

@@ -15,10 +15,14 @@ const {
   deleteBlog,
   searchBlog,
   getUserLikedBlogs,
+  getOtherUserBlogs,
 } = require("../controllers/blogControllers");
 const User = require("../models/User");
 
 router.get("/userblogs", fetchuser, getUserBlogs);
+
+router.get("/otheruserblogs/:userId", getOtherUserBlogs);
+
 router.get("/userlikedblogs", fetchuser, getUserLikedBlogs);
 
 router.get("/search", searchBlog);
@@ -36,24 +40,5 @@ router.post("/create", fetchuser, createBlog);
 router.put("/update/:blogid", fetchuser, updateBlog);
 
 router.delete("/delete/:blogid", fetchuser, deleteBlog);
-
-// router.get("/add-attribute", async (req, res) => {
-//   try {
-//     async function addAttributeToDocuments() {
-//       const updateResult = await Blog.updateMany(
-//         {}, // Empty filter to select all documents
-//         { $set: { commentCount: 0 } } // Replace "defaultValue" with your desired value
-//       );
-
-//       console.log(`${updateResult.modifiedCount} documents were updated`);
-//       return `${updateResult.modifiedCount} documents were updated`;
-//     }
-//     const ans = await addAttributeToDocuments();
-//     res.status(200).send({ ans });
-//   } catch (error) {
-//     console.log(error.message);
-//     res.status(500).send("Internal Server Error!");
-//   }
-// });
 
 module.exports = router;
